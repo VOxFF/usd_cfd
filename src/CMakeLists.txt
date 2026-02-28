@@ -1,4 +1,5 @@
 add_library(ufc STATIC
+    CfdSimulation.cpp
     SimConfig.cpp
     WarpSolver.cpp
 )

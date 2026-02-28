@@ -1,7 +1,8 @@
+#include <ufc/CfdSimulation.h>
 #include <ufc/WarpSolver.h>
-#include <ufc/SimConfig.h>
 
 #include <iostream>
+#include <memory>
 #include <string>
 
 int main(int argc, char* argv[]) {
@@ -13,14 +14,17 @@ int main(int argc, char* argv[]) {
     const std::string input_path  = argv[1];
     const std::string output_path = argv[2];
 
-    // Locate the Warp solver script relative to the executable
     const std::string script_path = std::string(argv[0]) + "/../python/warp_solver.py";
 
-    ufc::WarpSolver solver(script_path, ufc::SimConfig{});
+    ufc::CfdSimulation sim(
+        ufd::DomainConfig{},
+        ufd::EnvelopeConfig{},
+        std::make_unique<ufc::WarpSolver>(script_path)
+    );
 
-    const std::string result = solver.solve(input_path, output_path);
+    const std::string result = sim.run(input_path, output_path);
     if (result.empty()) {
-        std::cerr << "Error: solver failed." << std::endl;
+        std::cerr << "Error: simulation failed." << std::endl;
         return 1;
     }
 
