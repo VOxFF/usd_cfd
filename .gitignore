@@ -44,6 +44,9 @@
 build/
 cmake-build-*/
 
+# Test-generated output files
+*_test_*.usd*
+
 # VSCode
 .vscode/
 *.code-workspace
