@@ -5,14 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(pxr REQUIRED
-    HINTS $ENV{USD_ROOT} ${USD_ROOT}
-)
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(OpenVDB REQUIRED)
 
-# Pull in usd_fluid_domain as a submodule (tests disabled)
+# Pull in usd_fluid_domain as a submodule (calls find_package(pxr) internally;
+# tests disabled to avoid pulling in GoogleTest twice)
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/usd_fluid_domain)
 
