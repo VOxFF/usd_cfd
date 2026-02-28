@@ -1,0 +1,3 @@
+[submodule "external/usd_fluid_domain"]
+	path = external/usd_fluid_domain
+	url = git@github.com:VOxFF/usd_fluid_domain.git
