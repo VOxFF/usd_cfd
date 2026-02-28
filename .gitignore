@@ -39,3 +39,17 @@
 
 # debug information files
 *.dwo
+
+# Build
+build/
+cmake-build-*/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env

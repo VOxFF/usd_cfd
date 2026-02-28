@@ -1,28 +1,27 @@
 #pragma once
 
+#include <ufc/ISolver.h>
 #include <ufc/SimConfig.h>
-
-#include <pxr/usd/usd/stage.h>
 
 #include <string>
 
-PXR_NAMESPACE_USING_DIRECTIVE
-
 namespace ufc {
 
-// Runs a CFD simulation on a composed USD stage produced by usd_fluid_domain.
-// The stage is expected to contain /FluidDomain and /Envelope prims.
-// Simulation is evaluated using NVIDIA Warp on the GPU.
-class WarpSolver {
+// CFD solver backed by NVIDIA Warp.  Runs as a subprocess:
+//   python3 <script_path> <input.usd> <output.usd>
+// The Python script is responsible for loading the USD stage, running the
+// Warp simulation, and writing results back to output.usd.
+class WarpSolver : public ISolver {
 public:
-    explicit WarpSolver(const SimConfig& config = {});
+    explicit WarpSolver(const std::string& script_path,
+                        const SimConfig&   config = {});
 
-    // Run the simulation and write results to a new USD layer.
-    // Returns the output layer path on success, or an empty string on failure.
-    std::string solve(UsdStageRefPtr stage, const std::string& output_path) const;
+    std::string solve(const std::string& input_path,
+                      const std::string& output_path) const override;
 
 private:
-    SimConfig config_;
+    std::string script_path_;
+    SimConfig   config_;
 };
 
 } // namespace ufc

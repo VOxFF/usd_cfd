@@ -22,4 +22,5 @@ target_compile_options(ufc
 target_link_libraries(ufc
     PUBLIC usd usdGeom usdShade sdf tf vt gf arch
            OpenVDB::openvdb
+           ufd
 )

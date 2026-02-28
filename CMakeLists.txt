@@ -12,14 +12,20 @@ find_package(pxr REQUIRED
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(OpenVDB REQUIRED)
 
+# Pull in usd_fluid_domain as a submodule (tests disabled)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/usd_fluid_domain)
+
+option(USD_CFD_BUILD_TESTS "Build usd_cfd unit tests" ON)
+set(BUILD_TESTS ${USD_CFD_BUILD_TESTS} CACHE BOOL "" FORCE)
+
 add_subdirectory(src)
 add_subdirectory(include)
 
 add_executable(usd_cfd main.cpp)
 target_link_libraries(usd_cfd PRIVATE ufc)
 
-option(BUILD_TESTS "Build unit tests" ON)
-if(BUILD_TESTS)
+if(USD_CFD_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
