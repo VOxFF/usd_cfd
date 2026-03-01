@@ -24,8 +24,9 @@ public:
     }
 };
 
-static const std::string OUT =
+static const std::string BASE =
     std::string(TEST_RESOURCES_DIR) + "/box_test_cfd";
+static const std::string OUT = BASE + ".usda";
 
 TEST(CfdSimulationTest, RunCreatesIntermediateLayers) {
     ufc::CfdSimulation sim(
@@ -36,9 +37,9 @@ TEST(CfdSimulationTest, RunCreatesIntermediateLayers) {
 
     sim.run(BOX_USD, OUT);
 
-    EXPECT_TRUE(SdfLayer::FindOrOpen(OUT + ".domain.usda"));
-    EXPECT_TRUE(SdfLayer::FindOrOpen(OUT + ".envelope.usda"));
-    EXPECT_TRUE(SdfLayer::FindOrOpen(OUT + ".composed.usda"));
+    EXPECT_TRUE(SdfLayer::FindOrOpen(BASE + ".domain.usda"));
+    EXPECT_TRUE(SdfLayer::FindOrOpen(BASE + ".envelope.usda"));
+    EXPECT_TRUE(SdfLayer::FindOrOpen(BASE + ".composed.usda"));
 }
 
 TEST(CfdSimulationTest, RunReturnsSolverOutputPath) {

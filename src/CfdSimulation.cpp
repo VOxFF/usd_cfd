@@ -33,8 +33,13 @@ std::string CfdSimulation::run(const std::string& input_path,
     ufd::SurfaceExtractor extractor;
     auto bounds = extractor.compute_bounding_box(extractor.extract(meshes));
 
+    // Derive a base path (strip extension) for intermediate layer names
+    std::string base = output_path;
+    const auto  dot  = base.rfind('.');
+    if (dot != std::string::npos) base = base.substr(0, dot);
+
     // 3. Build domain
-    const std::string domain_path   = output_path + ".domain.usda";
+    const std::string domain_path   = base + ".domain.usda";
     auto domain_stage = pxr::UsdStage::CreateNew(domain_path);
     if (!domain_stage) {
         std::cerr << "CfdSimulation: cannot create domain stage." << std::endl;
@@ -43,7 +48,7 @@ std::string CfdSimulation::run(const std::string& input_path,
     domain_builder_.build(domain_stage, bounds);
 
     // 4. Build envelope
-    const std::string envelope_path = output_path + ".envelope.usda";
+    const std::string envelope_path = base + ".envelope.usda";
     auto envelope_stage = pxr::UsdStage::CreateNew(envelope_path);
     if (!envelope_stage) {
         std::cerr << "CfdSimulation: cannot create envelope stage." << std::endl;
@@ -52,7 +57,7 @@ std::string CfdSimulation::run(const std::string& input_path,
     envelope_builder_.build(envelope_stage, meshes);
 
     // 5. Compose all layers
-    const std::string composed_path = output_path + ".composed.usda";
+    const std::string composed_path = base + ".composed.usda";
     ufd::StageComposer composer(composed_path);
     composer.add_component(ufd::ComponentType::InputGeometry, reader.get_stage());
     composer.add_component(ufd::ComponentType::FluidDomain,   domain_stage);
