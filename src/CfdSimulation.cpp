@@ -84,13 +84,18 @@ std::string CfdSimulation::run(const std::string& input_path,
         return {};
     }
 
-    // 7. Add particles as the strongest sublayer in composed.usda
+    // 7. Add particles as the strongest sublayer in composed.usda and
+    //    copy time metadata so usdview knows the animation range.
     {
-        auto layer = SdfLayer::FindOrOpen(composed_path);
-        if (layer) {
-            layer->GetSubLayerPaths().insert(
-                layer->GetSubLayerPaths().begin(), particles_path);
-            layer->Save();
+        auto composed_layer  = SdfLayer::FindOrOpen(composed_path);
+        auto particles_layer = SdfLayer::FindOrOpen(particles_path);
+        if (composed_layer && particles_layer) {
+            composed_layer->GetSubLayerPaths().insert(
+                composed_layer->GetSubLayerPaths().begin(), particles_path);
+            composed_layer->SetStartTimeCode(particles_layer->GetStartTimeCode());
+            composed_layer->SetEndTimeCode(particles_layer->GetEndTimeCode());
+            composed_layer->SetFramesPerSecond(particles_layer->GetFramesPerSecond());
+            composed_layer->Save();
         }
     }
 
