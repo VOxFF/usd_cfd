@@ -23,17 +23,19 @@ namespace ufc {
 //   5. Compose layers  (StageComposer)
 //   6. Run solver      (ISolver)
 //
-// Intermediate USD layers are written alongside output_path.
+// All output layers are written to output_dir, named after the input file stem:
+//   <stem>.domain.usda, <stem>.envelope.usda, <stem>.particles.usda,
+//   <stem>.composed.usda  (returned on success; contains all layers including particles)
 class CfdSimulation {
 public:
     CfdSimulation(const ufd::DomainConfig&   domain_config,
                   const ufd::EnvelopeConfig& envelope_config,
                   std::unique_ptr<ISolver>   solver);
 
-    // Run the full pipeline.  Returns the solver output path on success,
+    // Run the full pipeline.  Returns the composed stage path on success,
     // or an empty string on failure.
     std::string run(const std::string& input_path,
-                    const std::string& output_path) const;
+                    const std::string& output_dir = {}) const;
 
 private:
     ufd::DomainBuilder   domain_builder_;

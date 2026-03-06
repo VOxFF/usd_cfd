@@ -7,7 +7,7 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        std::cerr << "Usage: usd_cfd <input.usd> <output.usd>" << std::endl;
+        std::cerr << "Usage: usd_cfd <input.usd> <output_dir>" << std::endl;
         return 1;
     }
 

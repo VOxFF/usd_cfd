@@ -13,6 +13,7 @@ add_subdirectory(src)
 
 target_compile_definitions(usd_cfd_tests PRIVATE
     TEST_RESOURCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    WARP_SOLVER_SCRIPT="${CMAKE_SOURCE_DIR}/python/warp_solver.py"
 )
 
 target_link_libraries(usd_cfd_tests

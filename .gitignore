@@ -46,6 +46,10 @@ cmake-build-*/
 
 # Test-generated output files
 *_test_*.usd*
+*.domain.usd*
+*.envelope.usd*
+*.particles.usd*
+*.composed.usd*
 
 # VSCode
 .vscode/
