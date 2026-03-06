@@ -85,8 +85,10 @@ TEST(CfdSimulationTest, RunUsesCustomOutputDir) {
 }
 
 TEST(CfdSimulationTest, RunWithWarpProducesAnimatedParticles) {
+    ufd::DomainConfig domain;
+    domain.extent_multiplier = 5.0;
     ufc::CfdSimulation sim(
-        ufd::DomainConfig{},
+        domain,
         ufd::EnvelopeConfig{},
         std::make_unique<ufc::WarpSolver>(WARP_SOLVER_SCRIPT)
     );
