@@ -48,6 +48,8 @@ cmake-build-*/
 *_test_*.usd*
 *.domain.usd*
 *.envelope.usd*
+*.envelope.bin
+*.envelope.vdb
 *.particles.usd*
 *.composed.usd*
 

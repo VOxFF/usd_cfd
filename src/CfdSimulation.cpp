@@ -64,7 +64,8 @@ std::string CfdSimulation::run(const std::string& input_path,
         std::cerr << "CfdSimulation: cannot create envelope stage." << std::endl;
         return {};
     }
-    envelope_builder_.build(envelope_stage, meshes);
+    const std::string sdf_path = base + ".envelope.bin";
+    envelope_builder_.build(envelope_stage, meshes, sdf_path);
 
     // 5. Compose input + domain + envelope — passed to solver as input
     {

@@ -14,6 +14,8 @@ applications." SCA 2003.
 """
 
 import sys
+import os
+import re
 import numpy as np
 import warp as wp
 
@@ -193,6 +195,64 @@ def initialize_particles(
     particle_x[tid] = pos
 
 
+# ---- Envelope SDF -----------------------------------------------------------
+
+def load_envelope_volume(bin_path, device):
+    """Load envelope SDF from a raw .bin file written by EnvelopeBuilder.
+    Format: int32 nx,ny,nz  float32 ox,oy,oz,voxel_size,background  float32[nx*ny*nz] C-order.
+    Returns (wp.Volume, voxel_size, origin) or (None, None, None) on failure.
+    """
+    if not os.path.exists(bin_path):
+        print(f"Warning: envelope SDF binary not found ({bin_path})")
+        return None, None, None
+    try:
+        with open(bin_path, 'rb') as f:
+            ints   = np.frombuffer(f.read(12), dtype=np.int32)
+            floats = np.frombuffer(f.read(20), dtype=np.float32)
+            nx, ny, nz = int(ints[0]), int(ints[1]), int(ints[2])
+            ox, oy, oz, voxel_size, background = (float(v) for v in floats)
+            data = np.frombuffer(f.read(nx * ny * nz * 4), dtype=np.float32).copy()
+
+        arr = data.reshape((nx, ny, nz))
+        vol = wp.Volume.load_from_numpy(arr,
+                                        min_world=(ox, oy, oz),
+                                        voxel_size=float(voxel_size),
+                                        bg_value=float(background),
+                                        device=device)
+        print(f"Loaded envelope SDF: {nx}x{ny}x{nz}  voxel_size={voxel_size:.4f}  origin=({ox:.3f},{oy:.3f},{oz:.3f})")
+        return vol, float(voxel_size), [ox, oy, oz]
+    except Exception as e:
+        print(f"Warning: could not load envelope SDF: {e}")
+        return None, None, None
+
+
+@wp.kernel
+def apply_envelope_repulsion(
+    particle_x: wp.array(dtype=wp.vec3),
+    particle_a: wp.array(dtype=wp.vec3),
+    envelope:   wp.uint64,
+    strength:   float,
+    threshold:  float,
+):
+    tid = wp.tid()
+    x   = particle_x[tid]
+
+    uvw = wp.volume_world_to_index(envelope, x)
+    d   = wp.volume_sample_f(envelope, uvw, wp.Volume.LINEAR)
+
+    if d < threshold:
+        eps = float(1.0)
+        dx = wp.volume_sample_f(envelope, uvw + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) \
+           - wp.volume_sample_f(envelope, uvw - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
+        dy = wp.volume_sample_f(envelope, uvw + wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR) \
+           - wp.volume_sample_f(envelope, uvw - wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR)
+        dz = wp.volume_sample_f(envelope, uvw + wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR) \
+           - wp.volume_sample_f(envelope, uvw - wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR)
+
+        n = wp.normalize(wp.vec3(dx, dy, dz))
+        particle_a[tid] = particle_a[tid] + n * strength * (threshold - d)
+
+
 # ---- USD helpers ------------------------------------------------------------
 
 def create_output_stage(output_path, fps, num_frames):
@@ -257,6 +317,9 @@ def main():
         print(f"Error: cannot open {input_path}", file=sys.stderr)
         sys.exit(1)
 
+    # Derive envelope SDF binary path (box.composed.usda → box.envelope.bin)
+    bin_path = re.sub(r'\.composed\.usda$', '.envelope.bin', input_path)
+
     # Read simulation domain
     bmin, bmax = read_domain_bounds(stage)
     if bmin is None:
@@ -274,22 +337,22 @@ def main():
     h      = max(h, 0.01)                         # floor to avoid degenerate cases
     dt     = 0.01 * h
     fps    = 60
-    steps_per_frame = max(1, int(32.0 / h))
+    steps_per_frame = max(1, int(8.0 / h))
     num_frames      = 240                         # 4 seconds at 60 fps
 
-    # Particle block: one corner of the domain (x/4, full height, z/4)
-    nr_x = max(1, int(width  / 4.0 / h))
-    nr_y = max(1, int(height / h))
-    nr_z = max(1, int(length / 4.0 / h))
+    # Rain: thin slab covering full X/Z at the top of the domain
+    nr_x = max(1, int(width        / h))
+    nr_y = max(1, int(height / 8.0 / h))
+    nr_z = max(1, int(length       / h))
     n    = nr_x * nr_y * nr_z
 
     # Simulation constants (same ratios as example_sph.py)
     particle_mass         = 0.01 * h ** 3
     base_density          = 1.0
-    isotropic_exp         = 20.0
+    isotropic_exp         = 5.0
     dynamic_visc          = 0.025
-    damping_coef          = -0.95
-    gravity               = -0.1
+    damping_coef          = -0.5
+    gravity               = -0.5
     density_normalization = (315.0 * particle_mass) / (64.0 * np.pi * h ** 9)
     pressure_normalization= -(45.0 * particle_mass) / (np.pi * h ** 6)
     viscous_normalization = (45.0 * dynamic_visc * particle_mass) / (np.pi * h ** 6)
@@ -299,13 +362,16 @@ def main():
     wp.init()
     device = "cuda:0"
 
+    envelope_vol, _, _ = load_envelope_volume(bin_path, device)
+    repulsion_strength = isotropic_exp * 5.0
+
     # Allocate arrays
     x = wp.empty(n, dtype=wp.vec3, device=device)
     v = wp.zeros(n, dtype=wp.vec3, device=device)
     a = wp.zeros(n, dtype=wp.vec3, device=device)
     rho = wp.zeros(n, dtype=float, device=device)
 
-    origin_wp  = wp.vec3(float(bmin[0]), float(bmin[1]), float(bmin[2]))
+    origin_wp  = wp.vec3(float(bmin[0]), float(bmax[1]) - nr_y * h, float(bmin[2]))
     bound_min  = wp.vec3(float(bmin[0]), float(bmin[1]), float(bmin[2]))
     bound_max  = wp.vec3(float(bmax[0]), float(bmax[1]), float(bmax[2]))
 
@@ -335,6 +401,10 @@ def main():
                 device=device)
             wp.launch(apply_bounds,       dim=n,
                 inputs=[x, v, damping_coef, bound_min, bound_max], device=device)
+            if envelope_vol is not None:
+                wp.launch(apply_envelope_repulsion, dim=n,
+                    inputs=[x, a, envelope_vol.id, repulsion_strength, h],
+                    device=device)
             wp.launch(kick,               dim=n, inputs=[v, a, dt], device=device)
             wp.launch(drift,              dim=n, inputs=[x, v, dt], device=device)
 
